@@ -1,0 +1,42 @@
+name: Build NexMove Android APK
+
+on:
+  push:
+    paths:
+      - 'NexMove_V1_CloudBuild_Source.zip'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack source project
+        run: |
+          test -f NexMove_V1_CloudBuild_Source.zip || { echo 'Please upload NexMove_V1_CloudBuild_Source.zip'; exit 1; }
+          unzip -q -o NexMove_V1_CloudBuild_Source.zip
+          test -f NexMove_AndroidStudio/settings.gradle.kts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android 35 SDK
+        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build debug APK
+        run: gradle --no-daemon -p NexMove_AndroidStudio :app:assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: NexMove-v1-debug-apk
+          path: NexMove_AndroidStudio/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+          if-no-files-found: error
